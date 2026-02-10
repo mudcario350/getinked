@@ -418,7 +418,7 @@ if "results" in st.session_state:
         labels = [f"Rank {r}" for r in sorted_ranks]
         values = [rank_hits[r] for r in sorted_ranks]
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(6, 3))
         ax.bar(range(len(labels)), values)
         ax.set_xticks(range(len(labels)))
         ax.set_xticklabels(labels, rotation=45, ha="right")
