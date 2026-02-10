@@ -2,7 +2,6 @@
 
 
 
-
 """
 Student-Speaker Assignment App (Streamlit)
 
@@ -414,18 +413,26 @@ if "results" in st.session_state:
     rank_hits = stats["rank_hits"]
     if rank_hits:
         import matplotlib.pyplot as plt
+        import matplotlib
+        matplotlib.rcParams.update(matplotlib.rcParamsDefault)
         sorted_ranks = sorted(rank_hits.keys())
         labels = [f"Rank {r}" for r in sorted_ranks]
         values = [rank_hits[r] for r in sorted_ranks]
 
-        fig, ax = plt.subplots(figsize=(6, 3))
-        ax.bar(range(len(labels)), values)
+        fig = plt.figure(figsize=(5, 2.5), dpi=100)
+        ax = fig.add_subplot(111)
+        ax.bar(range(len(labels)), values, width=0.6)
         ax.set_xticks(range(len(labels)))
-        ax.set_xticklabels(labels, rotation=45, ha="right")
-        ax.set_ylabel("Assignments")
-        ax.set_xlabel("Rank")
+        ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
+        ax.set_ylabel("Assignments", fontsize=8)
+        ax.set_xlabel("Rank", fontsize=8)
+        ax.tick_params(axis='y', labelsize=7)
         fig.tight_layout()
-        st.pyplot(fig)
+
+        col_chart, col_spacer = st.columns([2, 3])
+        with col_chart:
+            st.pyplot(fig)
+        plt.close(fig)
 
         for r in sorted_ranks:
             st.write(f"- **Rank {r}:** {rank_hits[r]} assignments")
