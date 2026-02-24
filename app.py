@@ -453,8 +453,7 @@ def format_assignment(speaker, session_num):
     """Return a display string for one assignment cell, enriched with session info."""
     if not speaker or speaker == "UNASSIGNED":
         return "UNASSIGNED"
-    info = SPEAKER_INFO.get(speaker, "")
-    return f"{speaker} — {info}" if info else speaker
+    return SPEAKER_INFO.get(speaker, speaker)
 
 
 def results_to_csv(results, all_sessions):
