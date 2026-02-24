@@ -23,9 +23,8 @@ CANONICAL_SPEAKERS = [
     "stutsman", "twietmeyer", "lederman"
 ]
 
-# Column index of the student email field in the raw survey CSV.
-# In a standard Google Forms export the email is column 1 (after the timestamp).
-EMAIL_COL = 1
+# Column index of the student email field in the raw survey CSV (0-based).
+EMAIL_COL = 3
 
 # ─────────────────────────────────────────────
 # CSV Cleaning Logic
