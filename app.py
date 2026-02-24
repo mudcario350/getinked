@@ -319,16 +319,21 @@ def fix_deficits(results, remaining, capacity, min_cap, all_sessions):
     return warnings
 
 
-def assign_unranked_students(unranked_names, speaker_sessions, remaining, capacity, all_sessions):
+def assign_unranked_students(unranked_names, speaker_sessions, remaining, capacity, all_sessions, seen_names=None):
     """
     Assign students who submitted no preferences to the least-populated slots.
     For each session the student is placed with whichever speaker currently has
     the fewest students assigned; ties are broken randomly.  A student will not
     be sent to the same speaker twice across sessions.
+    seen_names: optional set of already-assigned lowercased names to skip.
     Returns a list of [name, assignment dict, {}] entries (empty ranks).
     """
+    if seen_names is None:
+        seen_names = set()
     results = []
     for name in unranked_names:
+        if name.lower() in seen_names:
+            continue
         assignment = {}
         speakers_used = set()
         for session in all_sessions:
@@ -355,6 +360,7 @@ def assign_unranked_students(unranked_names, speaker_sessions, remaining, capaci
             remaining[(speaker, session)] -= 1
 
         results.append([name, assignment, {}])
+        seen_names.add(name.lower())
     return results
 
 
@@ -389,8 +395,12 @@ def run_solver(session_data, students_data, capacity, min_cap, unranked_names=No
 
     results = []
     warnings = []
+    seen_names = set()  # lowercased names already assigned — prevents duplicates
 
     for student_name, ranked_speakers, ranks in students:
+        if student_name.lower() in seen_names:
+            continue
+
         assignment, speakers_used = solve_student_max_pref(
             ranked_speakers, speaker_sessions, all_sessions, remaining
         )
@@ -402,6 +412,7 @@ def run_solver(session_data, students_data, capacity, min_cap, unranked_names=No
             warnings.append(f"Could not fully assign {student_name} ({len(assignment)}/{len(all_sessions)} sessions)")
 
         results.append([student_name, assignment, ranks])
+        seen_names.add(student_name.lower())
 
     # Post-processing: move students to satisfy minimum slot fill.
     # results entries are lists so fix_deficits can mutate the assignment dict.
@@ -411,7 +422,7 @@ def run_solver(session_data, students_data, capacity, min_cap, unranked_names=No
     # Assign unranked students to the least-populated remaining slots.
     if unranked_names:
         unranked_results = assign_unranked_students(
-            unranked_names, speaker_sessions, remaining, capacity, all_sessions
+            unranked_names, speaker_sessions, remaining, capacity, all_sessions, seen_names
         )
         results.extend(unranked_results)
 
