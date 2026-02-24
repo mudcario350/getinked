@@ -23,6 +23,10 @@ CANONICAL_SPEAKERS = [
     "stutsman", "twietmeyer", "lederman"
 ]
 
+# Column index of the student email field in the raw survey CSV.
+# In a standard Google Forms export the email is column 1 (after the timestamp).
+EMAIL_COL = 1
+
 # ─────────────────────────────────────────────
 # CSV Cleaning Logic
 # ─────────────────────────────────────────────
@@ -60,22 +64,39 @@ def clean_student_csv(raw_bytes):
         if i < len(CANONICAL_SPEAKERS):
             col_to_canon[col_idx] = CANONICAL_SPEAKERS[i]
 
-    students = []
+    # Keyed by email (lowercased) to deduplicate multiple submissions from the
+    # same student.  Later rows overwrite earlier ones so the most-recent
+    # preferences win.  Insertion order is preserved so the final list stays
+    # in roughly the same order as the first appearance of each student.
+    seen: dict[str, tuple[str, dict]] = {}  # email -> (name, ranks)
+    duplicate_count = 0
+
     for row in data:
         if len(row) <= student_col:
             continue
         name = row[student_col].strip()
         if not name:
             continue
+
+        email = row[EMAIL_COL].strip().lower() if EMAIL_COL < len(row) else ""
+        # Fall back to name as the dedup key when no email is present.
+        dedup_key = email if email else name.lower()
+
         ranks = {}
         for i in speaker_cols:
             if i in col_to_canon and i < len(row):
                 rank = parse_choice(row[i])
                 if rank is not None:
                     ranks[col_to_canon[i]] = rank
-        students.append((name, ranks))
 
-    return students, None
+        if dedup_key in seen:
+            duplicate_count += 1
+            seen[dedup_key] = (name, ranks)  # update with latest submission
+        else:
+            seen[dedup_key] = (name, ranks)
+
+    students = list(seen.values())
+    return students, None, duplicate_count
 
 
 # ─────────────────────────────────────────────
@@ -340,12 +361,19 @@ uploaded_file = st.file_uploader("Choose CSV file", type=["csv"])
 
 if uploaded_file is not None:
     raw_bytes = uploaded_file.read()
-    students_data, error = clean_student_csv(raw_bytes)
+    students_data, error, duplicate_count = clean_student_csv(raw_bytes)
     if error:
         st.error(f"Error cleaning CSV: {error}")
     else:
         st.session_state.students_data = students_data
-        st.success(f"Loaded {len(students_data)} students!")
+        msg = f"Loaded {len(students_data)} students!"
+        if duplicate_count > 0:
+            msg += (
+                f" ({duplicate_count} duplicate "
+                f"submission{'s' if duplicate_count != 1 else ''} detected — "
+                "preferences updated to the most recent response.)"
+            )
+        st.success(msg)
         with st.expander("Preview student data"):
             preview_rows = []
             for name, ranks in students_data[:10]:
