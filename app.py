@@ -17,57 +17,58 @@ import difflib
 from collections import defaultdict
 
 CANONICAL_SPEAKERS = [
-    "Barshaw", "Bilen", "Kat h-c", "Johnson", "Korn", "Lenz", "Maloche",
-    "Nash", "Tebbetts", "Broome", "Cordi", "Flynn", "Alex h-c", "Layman",
-    "Stutsman", "Twietmeyer", "Lederman", "Robeson", "Shumaker", "Howard", "Shoup", "Zarzana", "Kakroo", "Moore"
+    "barshaw", "bilen", "kat h-c", "johnson", "korn", "lenz", "maloche",
+    "nash", "tebbetts", "broome", "cordi", "flynn", "alex h-c", "layman",
+    "stutsman", "twietmeyer", "lederman", "robeson", "shumaker", "howard", "shoup", "zarzana", "kakroo", "moore"
 ]
 
 # Column index of the student email field in the raw survey CSV (0-based).
 EMAIL_COL = 3
 
 # ─────────────────────────────────────────────
-# Speaker session info  (title + room only — no name prefix)
-# Keys must match the entries in CANONICAL_SPEAKERS exactly.
+# Speaker session info  (title only — no name prefix)
+# All keys are lowercase to match the lowercased speaker names used internally.
 # format_assignment() combines the display name with the title at output time.
 # ─────────────────────────────────────────────
 SPEAKER_INFO = {
     # Room 211A
-    "Nash":       "Behind the Scenes",
-    "Lenz":       "Writing Warm Ups",
-    "Flynn":      "Writing Music with Words",
-    "Maloche":    "Make 'Em Feel",
+    "nash":       "Behind the Scenes",
+    "lenz":       "Writing Warm Ups",
+    "flynn":      "Writing Music with Words",
+    "maloche":    "Make 'Em Feel",
     # Room 211B
-    "Korn":       "Better Backstory",
-    "Cordi":      "Exploring Story Through Play and Discovery",
-    "Bilen":      "Screenwriting 101",
+    "korn":       "Better Backstory",
+    "cordi":      "Exploring Story Through Play and Discovery",
+    "bilen":      "Screenwriting 101",
     # Room 254A
-    "Tebbetts":   "Film School For Writers",
-    "Johnson":    "The Art of Conversation",
+    "tebbetts":   "Film School For Writers",
+    "johnson":    "The Art of Conversation",
     # Room 254B
-    "Broome":     "Writing the Femme Fatale",
-    "Alex h-c":   "Coffee With Your Character",
-    "Kat h-c":    "Core Memories",
+    "broome":     "Writing the Femme Fatale",
+    "alex h-c":   "Coffee With Your Character",
+    "kat h-c":    "Core Memories",
     # Room 210
-    "Stutsman":   "Making Magic",
-    "Lederman":   "The Discovery of Creative Nonfiction",
-    "Twietmeyer": "Crafting the Best POV for Your Story",
+    "stutsman":   "Making Magic",
+    "lederman":   "The Discovery of Creative Nonfiction",
+    "twietmeyer": "Crafting the Best POV for Your Story",
     # Room 207
-    "Layman":     "Art of the Scar",
-    "Barshaw":    "How to use art to get you writing",
-    "Robeson":    "Pow! Let's Write a Graphic Novel",
-    "Shumaker":   "Tangled up in tension",
-    "Kakroo":     "Building the Future with a Speculative Twist",
-    "Howard":     "Stuck in a scene? Two-Minute Brainstorms to Move Your Story Forward",
-    "Zarzana":    "Joy and Wonderment: Crafting Poems that Defy Gravity",
-    "Moore":      "Find Creative Zest",
-    "Shoup":      "Writing About Your Life",
+    "layman":     "Art of the Scar",
+    "barshaw":    "How to use art to get you writing",
+    "robeson":    "Pow! Let's Write a Graphic Novel",
+    "shumaker":   "Tangled up in tension",
+    "kakroo":     "Building the Future with a Speculative Twist",
+    "howard":     "Stuck in a scene? Two-Minute Brainstorms to Move Your Story Forward",
+    "zarzana":    "Joy and Wonderment: Crafting Poems that Defy Gravity",
+    "moore":      "Find Creative Zest",
+    "shoup":      "Writing About Your Life",
 }
 
-# Display name overrides for canonicals whose uppercased key isn't the right label.
+# Display name overrides for canonicals whose .upper() isn't the right label.
+# Keys are lowercase to match internal speaker names.
 SPEAKER_DISPLAY_NAME = {
-    "Cordi":    "CORDI & ALLEN",
-    "Alex h-c": "ALEX HIGGS-COULTHARD",
-    "Kat h-c":  "KAT HIGGS-COULTHARD",
+    "cordi":    "CORDI & ALLEN",
+    "alex h-c": "ALEX HIGGS-COULTHARD",
+    "kat h-c":  "KAT HIGGS-COULTHARD",
 }
 
 # ─────────────────────────────────────────────
@@ -667,17 +668,32 @@ if session_mode == "Manual entry":
 
     if st.button("✅ Submit Session Data", type="primary"):
         session_data = {}
+        session_warnings = []
         for sess_idx in range(1, num_sess + 1):
             speakers = []
             num_slots = st.session_state.session_slots[sess_idx]
             for slot in range(num_slots):
                 key = f"sess_{sess_idx}_slot_{slot}"
                 val = st.session_state.session_values.get(key, "").strip()
-                if val:
+                if not val:
+                    continue
+                canon, _ = match_speaker_to_canonical(val, CANONICAL_SPEAKERS)
+                if canon is not None:
+                    if canon != val.lower():
+                        session_warnings.append(
+                            f"Session {sess_idx}: \"{val}\" matched to canonical speaker \"{canon}\"."
+                        )
+                    speakers.append(canon)
+                else:
+                    session_warnings.append(
+                        f"Session {sess_idx}: \"{val}\" did not match any known speaker and was kept as-is."
+                    )
                     speakers.append(val.lower())
             if speakers:
                 session_data[sess_idx] = speakers
         st.session_state.session_data = session_data
+        for w in session_warnings:
+            st.warning(w)
         st.success(f"Saved {len(session_data)} sessions!")
         for s, spkrs in session_data.items():
             st.write(f"**Session {s}:** {', '.join(spkrs)}")
