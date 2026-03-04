@@ -167,7 +167,7 @@ def clean_student_csv(raw_bytes):
     headers = rows[0]
     data = rows[1:]
 
-    student_col = 3
+    student_col = 4
 
     # Discover ranking columns: start at RANK_COL_START and stop at the first
     # column whose header does not begin with "Rank the sessions".
