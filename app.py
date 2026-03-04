@@ -13,6 +13,7 @@ import csv
 import io
 import re
 import random
+import difflib
 from collections import defaultdict
 
 CANONICAL_SPEAKERS = [
