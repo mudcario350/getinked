@@ -19,9 +19,9 @@ from collections import defaultdict
 # Canonical speaker order (for cleaning raw CSV)
 # ─────────────────────────────────────────────
 CANONICAL_SPEAKERS = [
-    "barshaw", "bilen", "kat h-c", "johnson", "korn", "lenz", "maloche",
-    "nash", "tebbetts", "broome", "cordi", "flynn", "alex h-c", "layman",
-    "stutsman", "twietmeyer", "lederman"
+    "barshaw", "bilen", "kat h-c", "Johnson", "korn", "lenz", "maloche",
+    "nash", "Tebbetts", "broome", "cordi", "flynn", "alex h-c", "layman",
+    "stutsman", "twietmeyer", "lederman", "Robeson", "Shumaker", "Howard", "Shoup", "Zarzana", "Kakroo", "Moore"
 ]
 
 # Column index of the student email field in the raw survey CSV (0-based).
@@ -44,8 +44,8 @@ SPEAKER_INFO = {
     "cordi":      "CORDI & ALLEN - Exploring Story Through Play and Discovery (Room 211B)",
     "bilen":      "BILEN - Screenwriting 101 (Room 211B)",
     # Room 254A
-    "tebbetts":   "TEBBETTS - Film School For Writers (Room 254A)",
-    "johnson":    "JOHNSON - The Art of Conversation (Room 254A)",
+    "tebbetts":   "TEBBETTS - Film School For Writers",
+    "johnson":    "JOHNSON - The Art of Conversation",
     # Room 254B
     "broome":     "BROOME - Writing the Femme Fatale (Room 254B)",
     "alex h-c":   "ALEX HIGGS-COULTHARD - Coffee With Your Character (Room 254B)",
@@ -55,8 +55,17 @@ SPEAKER_INFO = {
     "lederman":   "LEDERMAN - The Discovery of Creative Nonfiction (Room 210)",
     "twietmeyer": "TWIETMEYER - Crafting the Best POV for Your Story (Room 210)",
     # Room 207
-    "layman":     "LAYMAN - Art of the Scar (Room 207)",
+    "layman":     "LAYMAN - Art of the Scar",
     "barshaw":    "BARSHAW - How to use art to get you writing (Room 207)",
+    "Robeson": "Pow! Let's Write a Graphic Novel", 
+    "Shumaker": "Tangled up in tension",
+    "Kakroo": "Building the Future with a Speculative Twist",
+    "Howard": "Stuck in a scene? Two-Minute Brainstorms to Move Your Story Forward",
+    "Zarzana": "Joy and Wonderment: Crafting Poems that Defy Gravity", 
+    "Moore": "Find Creative Zest", 
+    "Shoup": "Writing About Your Life",
+    
+    
 }
 
 # ─────────────────────────────────────────────
