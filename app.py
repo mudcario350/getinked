@@ -26,44 +26,48 @@ CANONICAL_SPEAKERS = [
 EMAIL_COL = 3
 
 # ─────────────────────────────────────────────
-# Speaker session info  (title + room)
+# Speaker session info  (title + room only — no name prefix)
 # Keys must match the entries in CANONICAL_SPEAKERS exactly.
-# Note: "maloche" here matches CANONICAL_SPEAKERS; the schedule spells it
-# "MELOCHE" — fix both if the canonical spelling needs to change.
+# format_assignment() combines the display name with the title at output time.
 # ─────────────────────────────────────────────
 SPEAKER_INFO = {
     # Room 211A
-    "Nash":       "NASH - Behind the Scenes (Room 211A)",
-    "Lenz":       "LENZ - Writing Warm Ups (Room 211A)",
-    "Flynn":      "FLYNN - Writing Music with Words (Room 211A)",
-    "Maloche":    "MALOCHE - Make 'Em Feel (Room 211A)",
+    "Nash":       "Behind the Scenes",
+    "Lenz":       "Writing Warm Ups",
+    "Flynn":      "Writing Music with Words",
+    "Maloche":    "Make 'Em Feel",
     # Room 211B
-    "Korn":       "KORN - Better Backstory (Room 211B)",
-    "Cordi":      "CORDI & ALLEN - Exploring Story Through Play and Discovery (Room 211B)",
-    "Bilen":      "BILEN - Screenwriting 101 (Room 211B)",
+    "Korn":       "Better Backstory",
+    "Cordi":      "Exploring Story Through Play and Discovery",
+    "Bilen":      "Screenwriting 101",
     # Room 254A
-    "Tebbetts":   "TEBBETTS - Film School For Writers",
-    "Johnson":    "JOHNSON - The Art of Conversation",
+    "Tebbetts":   "Film School For Writers",
+    "Johnson":    "The Art of Conversation",
     # Room 254B
-    "Broome":     "BROOME - Writing the Femme Fatale (Room 254B)",
-    "Alex h-c":   "ALEX HIGGS-COULTHARD - Coffee With Your Character (Room 254B)",
-    "Kat h-c":    "KAT HIGGS-COULTHARD - Core Memories (Room 254B)",
+    "Broome":     "Writing the Femme Fatale",
+    "Alex h-c":   "Coffee With Your Character",
+    "Kat h-c":    "Core Memories",
     # Room 210
-    "Stutsman":   "STUTSMAN - Making Magic (Room 210)",
-    "Lederman":   "LEDERMAN - The Discovery of Creative Nonfiction (Room 210)",
-    "Twietmeyer": "TWIETMEYER - Crafting the Best POV for Your Story (Room 210)",
+    "Stutsman":   "Making Magic",
+    "Lederman":   "The Discovery of Creative Nonfiction",
+    "Twietmeyer": "Crafting the Best POV for Your Story",
     # Room 207
-    "Layman":     "LAYMAN - Art of the Scar",
-    "Barshaw":    "BARSHAW - How to use art to get you writing (Room 207)",
-    "Robeson": "Pow! Let's Write a Graphic Novel", 
-    "Shumaker": "Tangled up in tension",
-    "Kakroo": "Building the Future with a Speculative Twist",
-    "Howard": "Stuck in a scene? Two-Minute Brainstorms to Move Your Story Forward",
-    "Zarzana": "Joy and Wonderment: Crafting Poems that Defy Gravity", 
-    "Moore": "Find Creative Zest", 
-    "Shoup": "Writing About Your Life",
+    "Layman":     "Art of the Scar",
+    "Barshaw":    "How to use art to get you writing",
+    "Robeson":    "Pow! Let's Write a Graphic Novel",
+    "Shumaker":   "Tangled up in tension",
+    "Kakroo":     "Building the Future with a Speculative Twist",
+    "Howard":     "Stuck in a scene? Two-Minute Brainstorms to Move Your Story Forward",
+    "Zarzana":    "Joy and Wonderment: Crafting Poems that Defy Gravity",
+    "Moore":      "Find Creative Zest",
+    "Shoup":      "Writing About Your Life",
+}
 
-    
+# Display name overrides for canonicals whose uppercased key isn't the right label.
+SPEAKER_DISPLAY_NAME = {
+    "Cordi":    "CORDI & ALLEN",
+    "Alex h-c": "ALEX HIGGS-COULTHARD",
+    "Kat h-c":  "KAT HIGGS-COULTHARD",
 }
 
 # ─────────────────────────────────────────────
@@ -167,7 +171,7 @@ def clean_student_csv(raw_bytes):
     headers = rows[0]
     data = rows[1:]
 
-    student_col = 4
+    student_col = 4  # column 5 (0-based): "What name would you like us to use for you during the conference?"
 
     # Discover ranking columns: start at RANK_COL_START and stop at the first
     # column whose header does not begin with "Rank the sessions".
@@ -564,10 +568,14 @@ def compute_stats(results, all_sessions):
 
 
 def format_assignment(speaker, session_num):
-    """Return a display string for one assignment cell, enriched with session info."""
+    """Return a display string for one assignment cell: 'SPEAKER NAME - Session Title'."""
     if not speaker or speaker == "UNASSIGNED":
         return "UNASSIGNED"
-    return SPEAKER_INFO.get(speaker, speaker)
+    display_name = SPEAKER_DISPLAY_NAME.get(speaker, speaker.upper())
+    title = SPEAKER_INFO.get(speaker)
+    if title:
+        return f"{display_name} - {title}"
+    return display_name
 
 
 def results_to_csv(results, all_sessions):
