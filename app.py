@@ -15,13 +15,10 @@ import re
 import random
 from collections import defaultdict
 
-# ─────────────────────────────────────────────
-# Canonical speaker order (for cleaning raw CSV)
-# ─────────────────────────────────────────────
 CANONICAL_SPEAKERS = [
-    "barshaw", "bilen", "kat h-c", "Johnson", "korn", "lenz", "maloche",
-    "nash", "Tebbetts", "broome", "cordi", "flynn", "alex h-c", "layman",
-    "stutsman", "twietmeyer", "lederman", "Robeson", "Shumaker", "Howard", "Shoup", "Zarzana", "Kakroo", "Moore"
+    "Barshaw", "Bilen", "Kat h-c", "Johnson", "Korn", "Lenz", "Maloche",
+    "Nash", "Tebbetts", "Broome", "Cordi", "Flynn", "Alex h-c", "Layman",
+    "Stutsman", "Twietmeyer", "Lederman", "Robeson", "Shumaker", "Howard", "Shoup", "Zarzana", "Kakroo", "Moore"
 ]
 
 # Column index of the student email field in the raw survey CSV (0-based).
@@ -35,28 +32,28 @@ EMAIL_COL = 3
 # ─────────────────────────────────────────────
 SPEAKER_INFO = {
     # Room 211A
-    "nash":       "NASH - Behind the Scenes (Room 211A)",
-    "lenz":       "LENZ - Writing Warm Ups (Room 211A)",
-    "flynn":      "FLYNN - Writing Music with Words (Room 211A)",
-    "maloche":    "MALOCHE - Make 'Em Feel (Room 211A)",
+    "Nash":       "NASH - Behind the Scenes (Room 211A)",
+    "Lenz":       "LENZ - Writing Warm Ups (Room 211A)",
+    "Flynn":      "FLYNN - Writing Music with Words (Room 211A)",
+    "Maloche":    "MALOCHE - Make 'Em Feel (Room 211A)",
     # Room 211B
-    "korn":       "KORN - Better Backstory (Room 211B)",
-    "cordi":      "CORDI & ALLEN - Exploring Story Through Play and Discovery (Room 211B)",
-    "bilen":      "BILEN - Screenwriting 101 (Room 211B)",
+    "Korn":       "KORN - Better Backstory (Room 211B)",
+    "Cordi":      "CORDI & ALLEN - Exploring Story Through Play and Discovery (Room 211B)",
+    "Bilen":      "BILEN - Screenwriting 101 (Room 211B)",
     # Room 254A
-    "tebbetts":   "TEBBETTS - Film School For Writers",
-    "johnson":    "JOHNSON - The Art of Conversation",
+    "Tebbetts":   "TEBBETTS - Film School For Writers",
+    "Johnson":    "JOHNSON - The Art of Conversation",
     # Room 254B
-    "broome":     "BROOME - Writing the Femme Fatale (Room 254B)",
-    "alex h-c":   "ALEX HIGGS-COULTHARD - Coffee With Your Character (Room 254B)",
-    "kat h-c":    "KAT HIGGS-COULTHARD - Core Memories (Room 254B)",
+    "Broome":     "BROOME - Writing the Femme Fatale (Room 254B)",
+    "Alex h-c":   "ALEX HIGGS-COULTHARD - Coffee With Your Character (Room 254B)",
+    "Kat h-c":    "KAT HIGGS-COULTHARD - Core Memories (Room 254B)",
     # Room 210
-    "stutsman":   "STUTSMAN - Making Magic (Room 210)",
-    "lederman":   "LEDERMAN - The Discovery of Creative Nonfiction (Room 210)",
-    "twietmeyer": "TWIETMEYER - Crafting the Best POV for Your Story (Room 210)",
+    "Stutsman":   "STUTSMAN - Making Magic (Room 210)",
+    "Lederman":   "LEDERMAN - The Discovery of Creative Nonfiction (Room 210)",
+    "Twietmeyer": "TWIETMEYER - Crafting the Best POV for Your Story (Room 210)",
     # Room 207
-    "layman":     "LAYMAN - Art of the Scar",
-    "barshaw":    "BARSHAW - How to use art to get you writing (Room 207)",
+    "Layman":     "LAYMAN - Art of the Scar",
+    "Barshaw":    "BARSHAW - How to use art to get you writing (Room 207)",
     "Robeson": "Pow! Let's Write a Graphic Novel", 
     "Shumaker": "Tangled up in tension",
     "Kakroo": "Building the Future with a Speculative Twist",
@@ -64,13 +61,92 @@ SPEAKER_INFO = {
     "Zarzana": "Joy and Wonderment: Crafting Poems that Defy Gravity", 
     "Moore": "Find Creative Zest", 
     "Shoup": "Writing About Your Life",
-    
+
     
 }
 
 # ─────────────────────────────────────────────
 # CSV Cleaning Logic
 # ─────────────────────────────────────────────
+
+# Column index (0-based) where ranking columns begin (column 9 = index 8).
+RANK_COL_START = 8
+
+
+def extract_speaker_name_from_header(header):
+    """Extract speaker name from a ranking column header.
+
+    Expected format: "Rank the sessions ... [Speaker Name, Talk Title]"
+    Returns the speaker name (text before the first comma inside brackets).
+    Falls back to stripping the prefix and returning whatever remains.
+    """
+    m = re.search(r'\[([^\]]+)\]', header)
+    if m:
+        content = m.group(1)
+        return content.split(',')[0].strip()
+    # Fallback: strip everything up to any bracket
+    text = re.sub(r'(?i)^rank the sessions[^[]*', '', header.strip()).strip()
+    return text
+
+
+def match_speaker_to_canonical(speaker_text, canonical_speakers):
+    """Fuzzy-match an extracted speaker name to a canonical speaker.
+
+    Returns (canonical_name, score) where score is in [0, 1].
+    Returns (None, 0.0) when no match exceeds the confidence threshold.
+
+    Strategies tried (best score wins):
+      1. Exact lowercase match
+      2. Word-overlap ratio (tokenise on spaces and hyphens)
+      3. Similarity of last speaker word against each canonical token
+      4. Full-string SequenceMatcher similarity
+    """
+    THRESHOLD = 0.4
+    speaker_lower = speaker_text.lower().strip()
+
+    if not speaker_lower:
+        return None, 0.0
+
+    def tokens(s):
+        return re.split(r'[\s\-]+', s.lower())
+
+    speaker_tokens = tokens(speaker_lower)
+
+    best_score = 0.0
+    best_canon = None
+
+    for canon in canonical_speakers:
+        canon_lower = canon.lower()
+        canon_tokens = tokens(canon_lower)
+
+        # 1. Exact match
+        if speaker_lower == canon_lower:
+            return canon, 1.0
+
+        scores = []
+
+        # 2. Word-overlap: fraction of canonical tokens found in speaker tokens
+        speaker_token_set = set(speaker_tokens)
+        overlap = sum(1 for ct in canon_tokens if ct in speaker_token_set)
+        scores.append(overlap / max(len(canon_tokens), 1))
+
+        # 3. Last speaker word vs each canonical token
+        last_word = speaker_tokens[-1] if speaker_tokens else ""
+        for ct in canon_tokens:
+            scores.append(difflib.SequenceMatcher(None, last_word, ct).ratio())
+
+        # 4. Full string similarity
+        scores.append(difflib.SequenceMatcher(None, speaker_lower, canon_lower).ratio())
+
+        score = max(scores)
+        if score > best_score:
+            best_score = score
+            best_canon = canon
+
+    if best_score >= THRESHOLD:
+        return best_canon, best_score
+    return None, best_score
+
 
 def parse_choice(val):
     val = val.strip()
@@ -85,25 +161,42 @@ def clean_student_csv(raw_bytes):
     reader = csv.reader(io.StringIO(text))
     rows = list(reader)
     if not rows:
-        return None, "Empty CSV"
+        return None, "Empty CSV", 0, []
 
     headers = rows[0]
     data = rows[1:]
 
     student_col = 3
-    skip_cols = {0, 1, 2, 4, 5, 6, 7}
-    speaker_cols = [i for i in range(len(headers)) if i not in skip_cols and i != student_col]
 
-    if len(speaker_cols) != len(CANONICAL_SPEAKERS):
+    # Discover ranking columns: start at RANK_COL_START and stop at the first
+    # column whose header does not begin with "Rank the sessions".
+    ranking_cols = []
+    for i in range(RANK_COL_START, len(headers)):
+        if headers[i].strip().lower().startswith("rank the sessions"):
+            ranking_cols.append(i)
+        else:
+            break
+
+    if not ranking_cols:
         return None, (
-            f"Expected {len(CANONICAL_SPEAKERS)} speaker columns, "
-            f"found {len(speaker_cols)}. Check that the CSV format matches."
-        )
+            f"No ranking columns found starting at column {RANK_COL_START + 1}. "
+            "Expected headers beginning with 'Rank the sessions'."
+        ), 0, []
 
+    # Fuzzy-match each ranking column header to a canonical speaker name.
     col_to_canon = {}
-    for i, col_idx in enumerate(speaker_cols):
-        if i < len(CANONICAL_SPEAKERS):
-            col_to_canon[col_idx] = CANONICAL_SPEAKERS[i]
+    match_warnings = []
+    for col_idx in ranking_cols:
+        speaker_text = extract_speaker_name_from_header(headers[col_idx])
+        canon, score = match_speaker_to_canonical(speaker_text, CANONICAL_SPEAKERS)
+        if canon is None:
+            match_warnings.append(
+                f'Could not match column \u201c{headers[col_idx]}\u201d '
+                f'(extracted name: \u201c{speaker_text}\u201d) to any known speaker. '
+                "This column will be ignored."
+            )
+        else:
+            col_to_canon[col_idx] = canon
 
     # Keyed by email (lowercased) to deduplicate multiple submissions from the
     # same student.  Later rows overwrite earlier ones so the most-recent
@@ -124,11 +217,11 @@ def clean_student_csv(raw_bytes):
         dedup_key = email if email else name.lower()
 
         ranks = {}
-        for i in speaker_cols:
-            if i in col_to_canon and i < len(row):
-                rank = parse_choice(row[i])
+        for col_idx in ranking_cols:
+            if col_idx in col_to_canon and col_idx < len(row):
+                rank = parse_choice(row[col_idx])
                 if rank is not None:
-                    ranks[col_to_canon[i]] = rank
+                    ranks[col_to_canon[col_idx]] = rank
 
         if dedup_key in seen:
             duplicate_count += 1
@@ -137,7 +230,7 @@ def clean_student_csv(raw_bytes):
             seen[dedup_key] = (name, ranks)
 
     students = list(seen.values())
-    return students, None, duplicate_count
+    return students, None, duplicate_count, match_warnings
 
 
 # ─────────────────────────────────────────────
@@ -598,10 +691,12 @@ uploaded_file = st.file_uploader("Choose CSV file", type=["csv"])
 
 if uploaded_file is not None:
     raw_bytes = uploaded_file.read()
-    students_data, error, duplicate_count = clean_student_csv(raw_bytes)
+    students_data, error, duplicate_count, match_warnings = clean_student_csv(raw_bytes)
     if error:
         st.error(f"Error cleaning CSV: {error}")
     else:
+        for w in match_warnings:
+            st.warning(f"Speaker matching issue: {w}")
         st.session_state.students_data = students_data
         msg = f"Loaded {len(students_data)} students!"
         if duplicate_count > 0:
